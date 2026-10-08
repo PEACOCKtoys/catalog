@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0c3b47">
+<title>Peacock Toys — Catalogue</title>
+<style>
+:root{--ink:#10252e;--nav:#0c3b47;--nav2:#13596a;--teal:#0f8b8d;--gold:#ffd23f;--bg:#e8f4f2;--mut:#5b7078;--red:#c0392b}
+*{box-sizing:border-box}body{margin:0;font:15px/1.45 "Trebuchet MS",system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:var(--nav);color:#fff;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:10px 14px}
+.logo{font-size:21px;font-weight:700}.logo i{font-style:normal;color:var(--gold)}
+#q{flex:1;min-width:150px;padding:10px 12px;border:0;border-radius:8px;font:inherit}
+nav{background:var(--nav2);display:flex;gap:4px;overflow-x:auto;padding:0 8px}nav a{color:#fff;text-decoration:none;padding:10px 12px;white-space:nowrap;border-bottom:3px solid transparent;cursor:pointer}nav a.on{border-color:var(--gold)}
+button{font:inherit;cursor:pointer;border:0;border-radius:8px;padding:8px 14px;background:var(--gold);color:var(--ink);font-weight:700;transition:transform .12s}button:active{transform:scale(.95)}
+button.g{background:#fff;border:1px solid #b9cfcb}button.r{background:var(--red);color:#fff}button:disabled{opacity:.5}
+main{max-width:1100px;margin:auto;padding:14px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.mut{color:var(--mut);font-size:13px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:10px}.chip{white-space:nowrap;background:#fff;border:1px solid #b9cfcb;border-radius:99px;padding:7px 14px;cursor:pointer}.chip.on{background:var(--teal);color:#fff;border-color:var(--teal)}.chip small{opacity:.75}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.c{position:relative;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px #0001;cursor:pointer;animation:rise .35s both;transition:transform .2s}.c:hover{transform:translateY(-3px)}
+.c img{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:#f3f8f7}.c .n{padding:6px 8px;font-size:13px;min-height:30px}
+.warn{position:absolute;top:6px;right:6px;background:var(--gold);border-radius:99px;padding:1px 7px;font-size:12px;font-weight:700}
+.card{background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 4px #0001;margin-bottom:12px}
+input,select,textarea{width:100%;padding:9px;margin:4px 0 10px;border:1px solid #b9cfcb;border-radius:8px;font:inherit}
+dialog{border:0;border-radius:14px;padding:16px;width:min(560px,95vw);max-height:92vh;overflow:auto;animation:pop .2s}dialog::backdrop{background:#000a}dialog img.big{width:100%;border-radius:10px;max-height:60vh;object-fit:contain;background:#f3f8f7}
+.gate{min-height:100vh;display:grid;place-content:center;text-align:center;padding:20px;background:linear-gradient(135deg,var(--nav),var(--teal))}.gate h1{color:#fff;margin:0 0 4px}.gate p{color:#dff}
+.opts{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:16px}.opt{width:230px;padding:22px 14px;background:#fff;border-radius:16px;display:flex;flex-direction:column;gap:6px;font-weight:400;box-shadow:0 6px 18px #0004}.opt b{font-size:19px}.opt span{color:var(--mut);font-size:13px}.opt:hover{transform:translateY(-4px)}
+.bar{height:10px;background:#d6e6e3;border-radius:99px;overflow:hidden;margin:8px 0}.bar div{height:100%;width:0;background:var(--teal);transition:width .2s}
+video{width:100%;border-radius:10px;background:#000}.err{color:var(--red);font-weight:700}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}@keyframes pop{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style></head><body><div id="app"></div><dialog id="dlg"></dialog>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getAuth,onAuthStateChanged,signInWithPopup,GoogleAuthProvider,signOut} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {getFirestore,collection,doc,getDoc,setDoc,updateDoc,deleteDoc,getDocs,query,where,limit,startAfter,writeBatch,getCountFromServer,deleteField} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+/* ===== SETTINGS ===== */
+const OWNER="singhkrishna7416@gmail.com";           // same owner as the shop
+const firebaseConfig={apiKey:"AIzaSyD7NOd765z9Tbx4v6ycI-fYNZiGWUNejnc",authDomain:"peacock-b8c4e.firebaseapp.com",projectId:"peacock-b8c4e",storageBucket:"peacock-b8c4e.firebasestorage.app",messagingSenderId:"860663177984",appId:"1:860663177984:web:6224b27123f514ad5749e5"};
+const CLOUD={name:"PASTE_CLOUD_NAME",preset:"PASTE_UNSIGNED_PRESET"};   // only needed for video uploads (see README)
+/* ===================== */
+
+const CATS=[
+ {id:"remote",label:"Remote",icon:"🎮",ai:"a remote control RC toy car, truck or helicopter",kw:/remote|\brc\b|radio|control/i},
+ {id:"metal",label:"Metal Cars & Bikes",icon:"🏍️",ai:"a metal die-cast toy car or motorcycle model",kw:/metal|die[- ]?cast|bike|motor|cycle/i},
+ {id:"barbie",label:"Barbie Dolls",icon:"👗",ai:"a Barbie fashion doll",kw:/barbi|doll/i},
+ {id:"key",label:"Key Toys",icon:"🔑",ai:"a wind-up clockwork toy with a winding key",kw:/\bkey|wind|clock/i},
+ {id:"friction",label:"Friction Toys",icon:"⚙️",ai:"a plastic friction-powered toy vehicle with gears",kw:/friction|pull/i}];
+const PAGE=48,MAXP=500,MAXV=100*1048576;
+const app0=initializeApp(firebaseConfig),auth=getAuth(app0),db=getFirestore(app0);
+const $=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const PREFIX={remote:"Remote",metal:"Metal",barbie:"Barbie",key:"Key",friction:"Friction"};
+const TYPES={
+ remote:[["Car","a remote control toy car"],["Truck","a remote control toy truck"],["Helicopter","a remote control toy helicopter"],["Bike","a remote control toy motorcycle"],["Boat","a remote control toy boat"],["Robot","a remote control toy robot"]],
+ metal:[["Car","a die-cast toy car"],["Bike","a die-cast toy motorcycle"],["Truck","a die-cast toy truck"],["Jeep","a die-cast toy jeep"]],
+ barbie:[["Doll","a single fashion doll"],["Doll Set","a set of several dolls"],["Playset","a doll house or playset"]],
+ key:[["Car","a wind-up toy car"],["Animal","a wind-up toy animal"],["Robot","a wind-up toy robot"],["Train","a wind-up toy train"],["Plane","a wind-up toy airplane"]],
+ friction:[["Car","a friction toy car"],["Truck","a friction toy truck"],["Bus","a friction toy bus"],["Bike","a friction toy motorcycle"],["Plane","a friction toy airplane"],["Train","a friction toy train"]]};
+// names use ONLY the product type and the pieces per pack
+const pcsFrom=f=>{const m=f.match(/(\d+)\s*(?:pcs?|pieces?)\b/i)||f.match(/pack\s*(?:of)?\s*(\d+)/i)||f.match(/(\d+)\s*pack\b/i);return m?+m[1]:0};
+const autoName=(c,type,n)=>`${PREFIX[c]} ${type||"Toy"}`+(n>0?` – ${n} pcs/pack`:"");
+async function typeOf(thumb,c){if(!clf)return"";try{const t=TYPES[c],o=await clf(thumb,t.map(x=>x[1]));return o[0].score>=.4?t.find(x=>x[1]===o[0].label)[0]:""}catch{return""}}
+// duplicate filter: a tiny fingerprint (difference hash) of every photo
+const dhash=src=>new Promise(res=>{const i=new Image();i.onload=()=>{const c=document.createElement("canvas");c.width=9;c.height=8;const x=c.getContext("2d");x.drawImage(i,0,0,9,8);const d=x.getImageData(0,0,9,8).data,g=k=>d[k*4]*.3+d[k*4+1]*.59+d[k*4+2]*.11;let hi=0,lo=0,k=0;
+  for(let y=0;y<8;y++)for(let p=0;p<8;p++){const bit=g(y*9+p)>g(y*9+p+1)?1:0;if(k<32)hi=(hi*2+bit)>>>0;else lo=(lo*2+bit)>>>0;k++}res([hi,lo])};i.onerror=()=>res(null);i.src=src});
+const pc32=x=>{x=x-((x>>>1)&0x55555555);x=(x&0x33333333)+((x>>>2)&0x33333333);return Math.imul((x+(x>>>4))&0x0F0F0F0F,0x01010101)>>>24};
+const near=(a,b)=>pc32(a[0]^b[0])+pc32(a[1]^b[1])<=6;
+const hex=h=>h[0].toString(16).padStart(8,"0")+h[1].toString(16).padStart(8,"0");
+const catOf=id=>CATS.find(c=>c.id===id)||CATS[0];
+let user=null,team=false,mode="gate",gateMsg="",view="cat",cat="all",search="",sess="",items=[],last=null,more=false,loading=false,counts={},sessions=[],up={stage:"pick",items:[]};
+const guest=()=>{try{return localStorage.getItem("pc_guest")==="1"}catch{return false}};
+const setGuest=v=>{try{v?localStorage.setItem("pc_guest","1"):localStorage.removeItem("pc_guest")}catch{}};
+
+/* ---------- auth: only Guest or Team ---------- */
+onAuthStateChanged(auth,async u=>{
+  if(u){
+    const e=u.email.toLowerCase();let r=e===OWNER.toLowerCase()?"owner":null;
+    if(!r)try{const x=(await getDoc(doc(db,"roles",e))).data()?.role;if(x==="admin"||x==="coOwner")r=x}catch{}
+    if(!r){await signOut(auth);gateMsg="That Google account is not on the team. Ask the owner to add it, or continue as Guest.";user=null;team=false;mode="gate";return draw()}
+    user=u;team=true;mode="team";gateMsg="";
+  }else{user=null;team=false;mode=guest()?"guest":"gate"}
+  draw();loadAll();
+});
+
+/* ---------- data ---------- */
+async function load(reset=true){
+  if(reset){items=[];last=null;more=false}
+  loading=true;const qs=[];
+  if(cat==="review")qs.push(where("review","==",true));else if(cat!=="all")qs.push(where("cat","==",cat));
+  if(sess)qs.push(where("session","==",sess));
+  if(last)qs.push(startAfter(last));qs.push(limit(PAGE));
+  try{const s=await getDocs(query(collection(db,"catalogue"),...qs));items=items.concat(s.docs.map(d=>({id:d.id,...d.data()})));last=s.docs[s.docs.length-1]||last;more=s.docs.length===PAGE}
+  catch(e){gateMsg="Could not load: "+e.message}
+  loading=false;draw();
+}
+async function loadCounts(){
+  try{for(const c of CATS)counts[c.id]=(await getCountFromServer(query(collection(db,"catalogue"),where("cat","==",c.id)))).data().count;
+  counts.all=CATS.reduce((a,c)=>a+(counts[c.id]||0),0);
+  if(team)counts.review=(await getCountFromServer(query(collection(db,"catalogue"),where("review","==",true)))).data().count}catch{}
+  draw();
+}
+async function loadSessions(){try{sessions=(await getDocs(query(collection(db,"uploads"),limit(40)))).docs.map(d=>({id:d.id,...d.data()})).filter(s=>s.id!=="hashes")}catch{}}
+const loadAll=()=>{load();loadCounts();loadSessions()};
+
+/* ---------- AI (runs in the browser, free, no API key) ---------- */
+let clf=null,aiFailed=false;
+async function ensureAI(say){
+  if(clf||aiFailed)return;
+  try{say("Loading the AI model (first time only, about 50 MB)…");
+    const T=await import("https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2");T.env.allowLocalModels=false;
+    clf=await T.pipeline("zero-shot-image-classification","Xenova/clip-vit-base-patch32");
+  }catch(e){aiFailed=true;console.warn(e)}
+}
+async function classify(it){
+  const k=CATS.find(c=>c.kw.test(it.file));if(k)return{cat:k.id,conf:1};            // file name hint, e.g. "barbie_pink.jpg"
+  if(!clf)return{cat:"remote",conf:0};
+  try{const o=await clf(it.thumb,CATS.map(c=>c.ai));return{cat:CATS.find(c=>c.ai===o[0].label).id,conf:o[0].score}}catch{return{cat:"remote",conf:0}}
+}
+const shrink=(src,max,q)=>new Promise((res,rej)=>{const i=new Image();i.onload=()=>{const s=Math.min(1,max/Math.max(i.width,i.height)),c=document.createElement("canvas");c.width=Math.round(i.width*s);c.height=Math.round(i.height*s);c.getContext("2d").drawImage(i,0,0,c.width,c.height);res(c.toDataURL("image/jpeg",q))};i.onerror=rej;i.src=src});
+
+/* ---------- screens ---------- */
+function draw(){
+  const app=$("#app");
+  if(mode==="gate"){app.innerHTML=`<div class="gate"><h1>🦚 Peacock Toys</h1><p>Online catalogue — choose how to continue</p>
+   <div class="opts"><button class="opt" data-a="guest"><b>👀 Guest</b><span>Browse the catalogue</span></button>
+   <button class="opt" data-a="team"><b>🛠️ Team</b><span>Sign in with Google to upload and manage</span></button></div>
+   ${gateMsg?`<p class="err" style="background:#fff;border-radius:10px;padding:10px;max-width:480px;margin:16px auto 0">${esc(gateMsg)}</p>`:""}</div>`;return}
+  if(view==="up"&&!team)view="cat";
+  const tabs=[["cat","Catalogue"],["vid","Videos"]];if(team)tabs.push(["up","⬆ Upload"]);
+  app.innerHTML=`<header><div class="logo">🦚 Peacock <i>Catalogue</i></div><input id="q" placeholder="Search by name…" value="${esc(search)}" style="${view==="cat"?"":"display:none"}">
+   <div class="row">${team?`<span>🛠️ ${esc((user.displayName||user.email).split(" ")[0])}</span><button class="g" data-a="out">Sign out</button>`:`<button data-a="team">Team sign-in</button><button class="g" data-a="out">Exit</button>`}</div></header>
+   <nav>${tabs.map(t=>`<a data-a="view" data-id="${t[0]}" class="${view===t[0]?"on":""}">${t[1]}</a>`).join("")}</nav>
+   <main>${({cat:catV,vid:vidV,up:upV})[view]()}</main>`;
+}
+const chip=(id,label,n)=>`<div class="chip ${cat===id?"on":""}" data-a="cat" data-id="${id}">${label}${n!==undefined?` <small>${n}</small>`:""}</div>`;
+function gridHtml(){
+  const l=items.filter(i=>(i.name||"").toLowerCase().includes(search.toLowerCase()));
+  if(!l.length)return loading?`<p class="mut">Loading…</p>`:`<p class="mut">No toys here yet.</p>`;
+  return l.map(i=>`<div class="c" data-a="open" data-id="${i.id}"><img loading="lazy" src="${esc(i.thumb)}" alt="${esc(i.name)}">${team&&i.review?`<span class="warn">⚠ check</span>`:""}<div class="n">${esc(i.name)||`<span class="mut">${esc(catOf(i.cat).label)}</span>`}</div></div>`).join("");
+}
+function catV(){
+  const s=sessions.find(x=>x.id===sess);
+  return `<div class="chips">${chip("all","All",counts.all)}${CATS.map(c=>chip(c.id,c.icon+" "+c.label,counts[c.id])).join("")}${team?chip("review","⚠ Needs review",counts.review):""}</div>
+  ${s?`<div class="card"><b>${esc(s.title)}</b> <span class="mut">${s.count} photos</span> <button class="g" data-a="clr">✕ Show everything</button>${s.video?`<video controls preload="metadata" src="${esc(s.video)}" style="margin-top:8px"></video>`:""}</div>`:""}
+  <div class="grid" id="grid">${gridHtml()}</div>${more?`<p style="text-align:center"><button data-a="more">Load more</button></p>`:""}`;
+}
+const vidV=()=>{const l=sessions.filter(s=>s.video);return l.length?l.map(s=>`<div class="card"><b>${esc(s.title)}</b> <span class="mut">${s.count} photos · ${new Date(s.createdAt).toLocaleDateString()}</span>
+  <video controls preload="metadata" src="${esc(s.video)}" style="margin:8px 0"></video><button class="g" data-a="sess" data-id="${s.id}">View the photos from this upload</button></div>`).join(""):`<p class="mut">No videos yet.</p>`};
+
+function upV(){
+  if(up.stage==="pick")return `<div class="card"><h3 style="margin-top:0">New upload</h3>
+   <label>Title (optional)<input id="tt" maxlength="80" placeholder="e.g. October new arrivals"></label>
+   <label>Photos — 1 to ${MAXP}<input id="ph" type="file" accept="image/*" multiple></label>
+   <label>Pieces per pack — optional (used when a file name has no number like "6pcs")<input id="pc" type="number" min="1" max="999"></label>
+   <label>Video — optional, up to 100 MB<input id="vd" type="file" accept="video/*"></label>
+   <button data-a="start">Upload and sort with AI</button><p class="mut">The AI looks at each photo and suggests a category. You can correct any of them before publishing. A file name like "barbie_pink.jpg" also helps it.</p></div>`;
+  if(up.stage==="work"||up.stage==="pub")return `<div class="card"><b id="prog">Working…</b><div class="bar"><div id="barf"></div></div><p class="mut">Keep this page open.</p></div>`;
+  const n={};up.items.forEach(i=>n[i.cat]=(n[i.cat]||0)+1);const rv=up.items.filter(i=>i.review).length,dp=up.items.filter(i=>i.dup).length,keep=up.items.filter(i=>!i.skip).length;
+  return `<div class="card"><b>${up.items.length} photos sorted.</b> ${CATS.map(c=>`${c.icon} ${n[c.id]||0}`).join(" · ")}<br><span class="mut">${rv?`⚠ ${rv} are uncertain — please check them. `:""}${dp?`🔁 ${dp} duplicate(s) will be skipped (tick/untick under each photo). `:""}${aiFailed?"The AI could not load, so please sort photos yourself. ":""}${up.video?"Video: "+esc(up.video.name):"No video"}</span>
+   <div class="row" style="margin-top:8px"><button id="pubbtn" data-a="publish">Publish ${keep} photos</button><button class="g" data-a="cancel">Cancel</button></div></div>
+   <div class="grid">${up.items.map((it,i)=>`<div class="c" style="cursor:default;${it.skip?"opacity:.55":""}"><img src="${esc(it.thumb)}" alt="">${it.review?`<span class="warn">⚠</span>`:""}
+   <input class="upname" data-i="${i}" maxlength="80" value="${esc(it.name)}" placeholder="Name" style="margin:0;border-radius:0;font-size:12px">
+   <select class="upcat" data-i="${i}" style="margin:0;border-radius:0">${CATS.map(c=>`<option value="${c.id}" ${c.id===it.cat?"selected":""}>${c.label}</option>`).join("")}</select>
+   ${it.dup?`<label class="mut" style="display:block;padding:4px 6px"><input type="checkbox" class="upskip" data-i="${i}" ${it.skip?"checked":""} style="width:auto;margin:0 4px 0 0">🔁 Skip — ${esc(it.dup)}</label>`:""}</div>`).join("")}</div>`;
+}
+const setProg=(t,p)=>{if($("#prog"))$("#prog").textContent=t;if(p!==undefined&&$("#barf"))$("#barf").style.width=Math.round(p*100)+"%"};
+
+async function startUpload(){
+  let files=[...$("#ph").files];const v=$("#vd").files[0];
+  if(!files.length)return alert("Choose at least 1 photo.");
+  if(files.length>MAXP){alert(`Only the first ${MAXP} photos will be used.`);files=files.slice(0,MAXP)}
+  if(v&&v.size>MAXV)return alert("The video is over 100 MB. Please choose a shorter one.");
+  up={stage:"work",items:[],video:v||null,title:$("#tt").value,pcs:+$("#pc").value||0};draw();
+  await ensureAI(t=>setProg(t,0));
+  let ex=[];try{const h=(await getDoc(doc(db,"uploads","hashes"))).data()?.h||{};ex=Object.entries(h).map(([id,t])=>({id,h:[parseInt(t.slice(0,8),16),parseInt(t.slice(8),16)]}))}catch{}
+  for(let i=0;i<files.length;i++){
+    setProg(`Sorting photo ${i+1} of ${files.length}…`,i/files.length);
+    try{const u=URL.createObjectURL(files[i]),full=await shrink(u,900,.72);URL.revokeObjectURL(u);const thumb=await shrink(full,320,.6);
+      const it={file:files[i].name.replace(/\.[^.]+$/,"").replace(/[_.\-]+/g," "),thumb,full};const r=await classify(it);it.cat=r.cat;it.review=r.conf<.5;
+      it.pcs=pcsFrom(it.file)||up.pcs;it.name=autoName(it.cat,r.conf>0?await typeOf(thumb,it.cat):"",it.pcs);it.auto=true;
+      it.hash=await dhash(thumb);
+      if(it.hash){const d=ex.find(e=>near(e.h,it.hash)),j=up.items.findIndex(o=>o.hash&&near(o.hash,it.hash));
+        if(d){it.dup="already in the catalogue";it.skip=true}else if(j>=0){it.dup=`same as photo ${j+1} in this upload`;it.skip=true}}
+      up.items.push(it)}catch{}
+    if(i%5===4)await new Promise(r=>setTimeout(r))
+  }
+  up.stage="review";draw();
+}
+function uploadVideo(file,onP){return new Promise((res,rej)=>{const x=new XMLHttpRequest();x.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD.name}/video/upload`);
+  x.upload.onprogress=e=>e.lengthComputable&&onP(e.loaded/e.total);
+  x.onload=()=>{try{const j=JSON.parse(x.responseText);j.secure_url?res(j.secure_url):rej(new Error(j.error?.message||"Video upload failed"))}catch(e){rej(e)}};
+  x.onerror=()=>rej(new Error("Network error while uploading the video"));
+  const f=new FormData();f.append("file",file);f.append("upload_preset",CLOUD.preset);x.send(f)})}
+async function publish(){
+  const keep=up.items.filter(i=>!i.skip),n=keep.length;let video="";
+  if(!n)return alert("Nothing to publish.");
+  if(up.video&&CLOUD.name.startsWith("PASTE")){if(!confirm("Video uploads are not set up yet (see README). Publish the photos without the video?"))return}
+  up.stage="pub";draw();
+  try{
+    if(up.video&&!CLOUD.name.startsWith("PASTE"))video=await uploadVideo(up.video,p=>setProg(`Uploading video ${Math.round(p*100)}%`,p));
+    const base=String(9e12-Date.now()).padStart(13,"0"),hs={};
+    await setDoc(doc(db,"uploads",base),{title:(up.title||"").trim()||new Date().toLocaleDateString(),video,count:n,createdAt:Date.now(),by:user.email});
+    for(let i=0;i<n;i+=40){const b=writeBatch(db);
+      keep.slice(i,i+40).forEach((it,j)=>{const id=`${base}-${String(i+j).padStart(3,"0")}`;if(it.hash)hs[id]=hex(it.hash);
+        b.set(doc(db,"catalogue",id),{cat:it.cat,review:it.review,name:it.name.trim(),thumb:it.thumb,session:base,createdAt:Date.now()});
+        b.set(doc(db,"catalogueFull",id),{img:it.full})});
+      await b.commit();setProg(`Saved ${Math.min(i+40,n)} of ${n}`,Math.min(i+40,n)/n)}
+    try{await setDoc(doc(db,"uploads","hashes"),{h:hs},{merge:true})}catch{}
+    up={stage:"pick",items:[]};view="cat";cat="all";sess="";loadAll();alert("Published!");
+  }catch(e){alert("Upload failed: "+e.message);up.stage="review";draw()}
+}
+
+/* ---------- toy viewer ---------- */
+const dlg=$("#dlg");
+async function openToy(id){
+  const t=items.find(x=>x.id===id);if(!t)return;
+  dlg.innerHTML=`<img class="big" src="${esc(t.thumb)}" alt=""><p class="mut">Loading full photo…</p>`;dlg.showModal();
+  let full=t.thumb;try{full=(await getDoc(doc(db,"catalogueFull",id))).data()?.img||t.thumb}catch{}
+  dlg.innerHTML=`<img class="big" src="${esc(full)}" alt="${esc(t.name)}"><h3 style="margin:10px 0 2px">${esc(t.name)||"Toy"}</h3><div class="mut">${catOf(t.cat).icon} ${esc(catOf(t.cat).label)}</div>
+   ${team?`<hr><label>Name<input id="mn" maxlength="80" value="${esc(t.name)}"></label><label>Category<select id="mc">${CATS.map(c=>`<option value="${c.id}" ${c.id===t.cat?"selected":""}>${c.label}</option>`).join("")}</select></label>
+   <div class="row"><button data-a="savetoy" data-id="${id}">Save</button><button class="r" data-a="deltoy" data-id="${id}">Delete</button><button class="g" data-a="close">Close</button></div>`:`<p><button class="g" data-a="close">Close</button></p>`}`;
+}
+
+/* ---------- events ---------- */
+document.addEventListener("input",e=>{const t=e.target;if(t.id==="q"){search=t.value;$("#grid").innerHTML=gridHtml()}
+  if(t.classList.contains("upname")){const it=up.items[+t.dataset.i];it.name=t.value;it.auto=false}});
+document.addEventListener("change",e=>{const t=e.target,it=up.items[+t.dataset.i];
+  if(t.classList.contains("upcat")){it.cat=t.value;it.review=false;t.parentElement.querySelector(".warn")?.remove();if(it.auto){it.name=autoName(it.cat,"",it.pcs);t.parentElement.querySelector(".upname").value=it.name}}
+  if(t.classList.contains("upskip")){it.skip=t.checked;t.closest(".c").style.opacity=it.skip?.55:1;$("#pubbtn").textContent=`Publish ${up.items.filter(i=>!i.skip).length} photos`}});
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,id=b.dataset.id;
+  try{
+    if(a==="guest"){setGuest(true);mode="guest";draw();loadAll()}
+    else if(a==="team")await signInWithPopup(auth,new GoogleAuthProvider());
+    else if(a==="out"){setGuest(false);await signOut(auth);mode="gate";gateMsg="";draw()}
+    else if(a==="view"){view=id;draw()}
+    else if(a==="cat"){cat=id;load()}
+    else if(a==="more")load(false);
+    else if(a==="open")openToy(id);
+    else if(a==="close")dlg.close();
+    else if(a==="sess"){sess=id;cat="all";view="cat";load()}
+    else if(a==="clr"){sess="";load()}
+    else if(a==="start")startUpload();
+    else if(a==="cancel"){up={stage:"pick",items:[]};draw()}
+    else if(a==="publish")publish();
+    else if(a==="savetoy"){await updateDoc(doc(db,"catalogue",id),{name:$("#mn").value.trim(),cat:$("#mc").value,review:false});dlg.close();load();loadCounts()}
+    else if(a==="deltoy"&&confirm("Delete this toy from the catalogue?")){await deleteDoc(doc(db,"catalogue",id));await deleteDoc(doc(db,"catalogueFull",id));await updateDoc(doc(db,"uploads","hashes"),{["h."+id]:deleteField()}).catch(()=>{});dlg.close();load();loadCounts()}
+  }catch(err){if(err.code!=="auth/popup-closed-by-user")alert("Something went wrong: "+err.message)}
+});
+draw();
+</script></body></html>
